@@ -1,5 +1,8 @@
 # crBot / цыганский барон у цр
 
+![Screenshot_1](https://user-images.githubusercontent.com/57196133/216812510-2892e407-8235-45ce-af0d-72e3b57bf6a1.png)
+
+
 idea-publisher KostLim [profile in blasthack](https://www.blast.hk/members/269820/)     
 developer Vespan [profile in blasthack](https://www.blast.hk/members/295413/)   
 
