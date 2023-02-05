@@ -1,5 +1,5 @@
 script_name('[arz]crBot')
-script_version(1.50)
+script_version(1.00)
 upd = [[
 1
 2
@@ -11,7 +11,6 @@ require 'moonloader'
 requests = require 'requests'
 sampev = require'samp.events'
 imgui = require 'imgui'
-vkeys = require'vkeys'
 encoding = require("encoding"); encoding.default = 'CP1251'; u8 = encoding.UTF8  
 json = {
     defPath = getWorkingDirectory()..'/config/',
@@ -34,11 +33,11 @@ j = json.load({
     },
     lavki = {
         colors = {
-            ['пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ'] = {1,0,0,1},
-            ['пїЅпїЅпїЅпїЅпїЅпїЅ'] = {0,1,0,1},
-            ['пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ'] = {0,1,1,1},
-            ['пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ'] = {1,0,1,1},
-            ['пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ'] = {1,1,1,1},
+            ['редактирует'] = {1,0,0,1},
+            ['продаёт'] = {0,1,0,1},
+            ['покупает'] = {0,1,1,1},
+            ['продаёт и покупает'] = {1,0,1,1},
+            ['свободная лавка'] = {1,1,1,1},
         },
         coordmaster = {
             step = 5,
@@ -46,7 +45,7 @@ j = json.load({
         },
     },
     bot = {
-        through = 10,
+        delay = 10,
         coords = {}, 
         items = {},
     }
@@ -115,6 +114,7 @@ bot = {
     --
     work = false,
     bool = imgui.ImBool(false),
+    delay = imgui.ImInt(j.bot.delay),
     int = 0,
     --
     search = imgui.ImBuffer(256),
@@ -152,24 +152,25 @@ function main()
     while not isSampAvailable() do wait(0) end
     -- while not sampIsLocalPlayerSpawned() do wait(0) end
     upd = ''
+
     sampRegisterChatCommand('crb',function() window.v = not window.v end)
 
     for k,v in ipairs(lavki.lavki) do
         v.text = {
             id = 0,
-            text ='пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ!',
+            text ='свободная лавка!',
         }
         v.buy = false
-        v.render = true
+        v.render = false
     end
 
-    local f = io.open('moonloader/config/1.txt','r+')
-    local version,u = f:read('*a'):match('^%S+\nscript_version%((%S+)%)\nupd %= %[%[\n(.+)\n%]%]%-%-upd')
-    if tonumber(version) > tonumber(thisScript().version) then
-        sampAddChatMessage('пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ %s, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ /crb',version)
-        upd = u
-    end
-    f:close()
+    asyncHttpRequest('GET','https://raw.githubusercontent.com/v3sp4n/crBot/main/%5Barz%5DcrBot.lua',nil,function(r)
+        local version,u = r.text:match('^%S+\nscript_version%((%S+)%)\nupd %= %[%[\n(.+)\n%]%]%-%-upd')
+        if tonumber(version) > tonumber(thisScript().version) then
+            sampAddChatMessage('{F8B32D}Вышло обновление на версию %s, подробности в /crb',version)
+            upd = u
+        end
+    end,nil)
 
     while true do wait(0)
         imgui.Process = window.v or lavki.window.v or bot.window.v
@@ -180,16 +181,17 @@ function main()
 
 -- anim.file PED,anim.name FALL_FALL[1130]
         for k,v in ipairs(lavki.lavki) do
-            if v.text.text == 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ!' then
+            if v.text.text == 'свободная лавка!' then
                 local _,x,y,z = convert3DCoordsToScreenEx(v.pos[1],v.pos[2],MYPOS[3])
                 if z > 1 then
                     local xx,yy = convert3DCoordsToScreen(unpack(MYPOS))
-                    renderFontDrawTextFromAlign(font,'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ!',x,y,float4ToHex(lavki.colors['пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ']),2)
+                    renderFontDrawTextFromAlign(font,'Свободная лавка!',x,y,float4ToHex(lavki.colors['свободная лавка']),2)
                 end
                 if v.buy and getDistanceBetweenCoords3d(MYPOS[1], MYPOS[2], MYPOS[3],v.pos[1],v.pos[2],MYPOS[3]) <= 1.5 and not lavki.coordmaster.work and not isCharPlayingAnim(PLAYER_PED,'FALL_FALL') then
-                    if sampIsDialogActive() and sampGetDialogText():find('^%{%x+%}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ%: %{%x+%}%$%d+') then
+                    if sampIsDialogActive() and sampGetDialogText():find('^%{%x+%}Стоимость аренды лавки%: %{%x+%}%$%d+') then
                         wait(1)
                         sampCloseCurrentDialogWithButton(1)
+                        sendTelegramMessage('Словил лавку!!!')
                     end
                     sendSyncKey('ALT')
                     wait(10)
@@ -203,18 +205,18 @@ function main()
                 -- posZ = posZ - 2.1 !
                 for k,v in ipairs(lavki.lavki) do
                     local d = getDistanceBetweenCoords3d(posX, posY, posZ,v.pos[1],v.pos[2],posZ) 
-                    if d <= 1.9 and (text:find("^%w+_%w+ .+ пїЅпїЅпїЅпїЅпїЅ$") or text:find('пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ')) then
+                    if d <= 1.9 and (text:find("^%w+_%w+ .+ товар$") or text:find('редактирует')) then
                         v.text.id = IDTEXT
                         v.text.text = (text):gsub('%{%x+%}','')
-                    elseif d <= 1.9 and v.text.id == IDTEXT and not (text:find("^%w+_%w+ .+ пїЅпїЅпїЅпїЅпїЅ$") or text:find('пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ')) then
+                    elseif d <= 1.9 and v.text.id == IDTEXT and not (text:find("^%w+_%w+ .+ товар$") or text:find('редактирует')) then
                         if v.buy and not lavki.coordmaster.work then
                             lavki.coordmaster.work = true
                             coordMaster(v.pos[1],v.pos[2],(posZ-2.1))
                         end
                         if v.render then 
-                            sendTelegramMessage('пїЅпїЅпїЅпїЅпїЅ(%s) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!',k)
+                            sendTelegramMessage('Лавка(%s) освободилась!',k)
                         end
-                        v.text.text = 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ!'
+                        v.text.text = 'свободная лавка!'
                         v.text.id = 0
                     end
                 end
@@ -248,7 +250,7 @@ function main()
                 local td = bot.td
 
 
-                if (text == 'SHOP' or text == gameConvertText('пїЅпїЅпїЅпїЅпїЅпїЅпїЅ','rustogame')) then
+                if (text == 'SHOP' or text == gameConvertText('МАГАЗЙН','rustogame')) then
                     -- renderDrawPolygon(x,y,10,10,10,0,-1)
                     td.shop.id = id
                     td.shop.pos[1] = x
@@ -265,7 +267,7 @@ function main()
                 if td.shop.pos[3] ~= 0 and
                     x < (td.shop.pos[3]-50) and x > (td.shop.pos[3]-50-30) and
                     y > (td.shop.pos[4]-30) and
-                    text == gameConvertText('LD_SпїЅпїЅпїЅ:whitпїЅ','rustogame')
+                    text == gameConvertText('LD_SРАС:whitе','rustogame')
                     then
                     td.page = id
                 end
@@ -281,7 +283,7 @@ function main()
                     })
                 end
 
-                if bot.bool.v and lavkaOpen() and (text == gameConvertText('пїЅпїЅпїЅпїЅпїЅпїЅ','rustogame')) then
+                if bot.bool.v and lavkaOpen() and (text == gameConvertText('СКУПКА','rustogame')) then
                     sampSendClickTextdraw(id-1)
                     wait(5)
                 end
@@ -308,15 +310,15 @@ function imgui.OnDrawFrame()
    if window.v then
         -- imgui.SetNextWindowSize(imgui.ImVec2(150,85),1)
         imgui.SetNextWindowPos(imgui.ImVec2(sw/2.6,sh/2), imgui.Cond.FirstUseEver)
-        imgui.Begin(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ',window,32+64)
+        imgui.Begin(u8'цыганский барон у цр-crBot | '..thisScript().version ,window,32+64)
 
         imgui.BeginChild('b1',imgui.ImVec2(150,100),true)
             local b = {
-                {'telegram',u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ',function() imgui.OpenPopup('tg') end},
+                {'telegram',u8'Получение уведомлений в телеграм',function() imgui.OpenPopup('tg') end},
                 {'lavki',u8[[
-пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ(пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ coordmaster'e)]],function() lavki.window.v = not lavki.window.v end},
-                {'bot checker',u8[[пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ(пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ) пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ(пїЅ/пїЅ) пїЅпїЅпїЅпїЅпїЅ(пїЅ)]],function() bot.window.v = not bot.window end},
+Можно узнать где-какая лавка свободная или занята
+Включить ловлю на определенную лавку(работает на coordmaster'e)]],function() lavki.window.v = not lavki.window.v end},
+                {'bot',u8[[Бот который сам чекает каждую лавку(если она занятая и нет текста РЕДАКТИРУЕТ) и ищит указанны(й/е) товар(ы)]],function() bot.window.v = not bot.window.v end},
             }
             for k,v in ipairs(b) do
                 if imgui.Button(v[1],imgui.ImVec2(-1,25)) then
@@ -333,11 +335,12 @@ function imgui.OnDrawFrame()
                 local rj = decodeJson(r.text)
                 sampAddChatMessage(rj.ok and '{13E01D}successfull sending!' or ('{D21C1C}error code %s - %s'):format(rj.error_code,rj.description))
             end
-            if imgui.CollapsingHeader(u8'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ?') then
+            if imgui.CollapsingHeader(u8'Когда приходят уведомления?') then
                 imgui.Text(u8[[
-пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ(пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
-пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
-пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ)
+Когда лавка освободилась(нужно на лавку включить рендер)
+Когда скрипт словил лавку
+Когда бот нашел определенный предмет в лавке (или когда купил)
+Когда бот начал/сделал круг
 ]])
                 imgui.Separator()
             end
@@ -354,18 +357,27 @@ function imgui.OnDrawFrame()
         end
         if upd ~= '' then 
             imgui.Separator()
-            if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!',imgui.ImVec2(-1,0)) then
+            if imgui.Button(u8'что за обновление?',imgui.ImVec2(-1,0)) then
                 imgui.OpenPopup('update')
             end
             if imgui.BeginPopupModal('update',nil,64+1) then
                 for l in upd:gmatch('[^\n]+') do
                     imgui.Text(u8(l))
                 end
-                if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ',imgui.ImVec2(0,20)) then
-
+                if imgui.Button(u8'обновиться',imgui.ImVec2(0,20)) then
+                    downloadUrlToFile(
+                        'https://raw.githubusercontent.com/v3sp4n/crBot/main/%5Barz%5DcrBot.lua',
+                        thisScript().path,
+                        function(id,status,_,_)
+                            if status == 58 then
+                                sampAddChatMessage('{0CC726}Успешно{cccccc} установлено обновление! Перезагружаюсь..')
+                                thisScript():reload()
+                            end
+                        end
+                    )
                 end
                 imgui.SameLine()
-                if imgui.Button(u8'пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ',imgui.ImVec2(0,20)) then
+                if imgui.Button(u8'та нахой оно мне нада',imgui.ImVec2(0,20)) then
                     imgui.CloseCurrentPopup()
                 end
                 imgui.EndPopup()
@@ -381,76 +393,99 @@ function imgui.OnDrawFrame()
         imgui.SetNextWindowPos(imgui.ImVec2(sw/1.5-350/2,sh/2.5-300/2), imgui.Cond.FirstUseEver)
         imgui.Begin('bot',bot.window,32)
 
-        if imgui.Checkbox(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ?',bot.bool) then
+        if imgui.Checkbox(u8'запустить бота?',bot.bool) then
             bot.int = 1
             bot.td.int = 1
             lua_thread.create(function()
                 local freeze,nextPage = true,false
+                local c,clock = 1,0
                 while bot.bool.v do wait(0)
                     local t = j.bot.coords[bot.int]
-                    if t == nil then
-                        sampAddChatMessage('END')
+                    if #j.bot.items == 0 then
+                        sendTelegramMessage('Были выкуплены ВСЕ предметы!\nБот отключен')
                         break
                     end
-                    local d = getDistanceBetweenCoords3d(t.pos[1],t.pos[2],0,MYPOS[1],MYPOS[2],0)
-                    if d > 1 then
+                    if t == nil and clock == 0 then
+                        c = c + 1
+                        clock = os.clock()
+                        bot.int = 1
                         bot.td.int = 1
-                        setAngle(t.pos[1],t.pos[2],t.pos[3])
-                        setGameKeyState(1, -255)
-                    else
-                        if d <= 0.7 and freeze then
-                            freezeCharPosition(PLAYER_PED,true)
-                            wait(100)
-                            freezeCharPosition(PLAYER_PED,false)
-                            freeze = false
-                        end
-                        if t.lavka then
-                            if lavkaOpen() or sampIsDialogActive() then
-                                local selling = false
-                                for IDTEXT = 0, 2048 do
-                                    if sampIs3dTextDefined(IDTEXT) then
-                                        local text, _, posX, posY, posZ, _, _, _, _ = sampGet3dTextInfoById(IDTEXT)
-                                        if text:find('пїЅпїЅпїЅпїЅпїЅпїЅ') and getDistanceBetweenCoords3d(posX, posY, 0,MYPOS[1],MYPOS[2],0) <= 2.5 then
-                                            selling = true
+                        sendTelegramMessage('Был сделан %s круг!\nЖдем %s минут..',c,bot.delay.v)
+                    end
+                    if clock ~= 0 and ((os.clock()-clock)/60) >= bot.delay.v then
+                        clock = 0
+                        sendTelegramMessage('Вышло время!\nНачинаю круг..')
+                    end
+                    if clock == 0 then
+                        local d = getDistanceBetweenCoords3d(t.pos[1],t.pos[2],0,MYPOS[1],MYPOS[2],0)
+                        if d > 1 then
+                            bot.td.int = 1
+                            setAngle(t.pos[1],t.pos[2],t.pos[3])
+                            setGameKeyState(1, -255)
+                        else
+                            if d <= 0.7 and freeze then
+                                freezeCharPosition(PLAYER_PED,true)
+                                wait(100)
+                                freezeCharPosition(PLAYER_PED,false)
+                                freeze = false
+                            end
+                            if t.lavka then
+                                if lavkaOpen() or sampIsDialogActive() then
+                                    local selling = false
+                                    for IDTEXT = 0, 2048 do
+                                        if sampIs3dTextDefined(IDTEXT) then
+                                            local text, _, posX, posY, posZ, _, _, _, _ = sampGet3dTextInfoById(IDTEXT)
+                                            if text:find('продаёт') and getDistanceBetweenCoords3d(posX, posY, 0,MYPOS[1],MYPOS[2],0) <= 2.5 then
+                                                selling = true
+                                            end
                                         end
                                     end
-                                end
-                                if not selling then
-                                    bot.int = bot.int + 1
-                                end
-                            end
-                            if lavkaOpen() and not sampIsDialogActive() then
-                                if bot.td.items[bot.td.int] == nil or bot.td.items[bot.td.int].id == nil or bot.td.int > #bot.td.items then
-                                    sampSendClickTextdraw(bot.td.page)
-                                    wait(3000)
-                                    if #bot.td.items == 0 then
-                                        sampSendClickTextdraw(0xffff)
+                                    if not selling then
                                         bot.int = bot.int + 1
-                                        freeze = true
                                     end
-                                    bot.td.int = 1
-                                else
-                                    sampSendClickTextdraw(bot.td.items[bot.td.int].id)
-                                    wait(50)
                                 end
-                            elseif not lavkaOpen() then
-                                if sampIsDialogActive() then wait(1) sampCloseCurrentDialogWithButton(0) end
-                                sendSyncKey('ALT')
-                                wait(10)
+                                if lavkaOpen() and not sampIsDialogActive() then
+                                    if bot.td.items[bot.td.int] == nil or bot.td.items[bot.td.int].id == nil or bot.td.int > #bot.td.items then
+                                        sampSendClickTextdraw(bot.td.page)
+                                        wait(3000)
+                                        if #bot.td.items == 0 then
+                                            sampSendClickTextdraw(0xffff)
+                                            bot.int = bot.int + 1
+                                            freeze = true
+                                        end
+                                        bot.td.int = 1
+                                    else
+                                        sampSendClickTextdraw(bot.td.items[bot.td.int].id)
+                                        wait(50)
+                                    end
+                                elseif not lavkaOpen() then
+                                    if sampIsDialogActive() then wait(1) sampCloseCurrentDialogWithButton(0) end
+                                    sendSyncKey('ALT')
+                                    wait(10)
+                                end
+                            else
+                                freeze = true
+                                bot.int = bot.int + 1
                             end
-                        else
-                            freeze = true
-                            bot.int = bot.int + 1
                         end
                     end
                 end
             end)
         end
         imgui.TextQuestion(u8[[
-(!)пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ 1пїЅ пїЅпїЅпїЅпїЅпїЅ]])
+Бот начнет с первой точки до последней
+после последней точки бот ждет время которое вы укажите
+после чего насчет снова круг
+]])
 
-        if imgui.CollapsingHeader(u8'пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ') then
-            if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ!') then
+        if imgui.CollapsingHeader(u8'путь бота') then
+            if imgui.DragInt('delay',bot.delay,0.005,1,1000) then;   j.bot.delay = bot.delay.v;  json.save(j,'[arz]CrBaron.json');   end
+            imgui.TextQuestion(u8[[
+Время в минутах!
+Через сколько минут бот начнет проходить точки
+Таймер запускается после последней точки
+Во время таймера бот ничего не делает]])
+            if imgui.Button(u8'Поставить точку сюда!') then
                 -- MYPOS[3] = MYPOS[3]-1.5
                 table.insert(j.bot.coords,{
                     pos = MYPOS,
@@ -461,9 +496,9 @@ function imgui.OnDrawFrame()
             imgui.SameLine()
             imgui.Checkbox('lavka?',bot.lavka)
             imgui.TextQuestion(u8[[
-пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ lavka?=true
-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
-(пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)]])
+Если бот подошел к этой точке и тут стоит lavka?=true
+то скрипт будет флудить АЛЬТ для открытия лавки
+(если поблизости Свободная лавка то скрипт её пропустит)]])
             imgui.Separator()
             for k,v in ipairs(j.bot.coords) do
                 local _,x,y,z = convert3DCoordsToScreenEx(unpack(v.pos))
@@ -495,7 +530,7 @@ function imgui.OnDrawFrame()
             for k,v in ipairs(j.bot.items) do
                 imgui.Text(u8(v.item))
                 imgui.TextQuestion(nil,u8(
-                    (v.buy and ('пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ '..v.cost..'$ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ,'..v.int..' пїЅпїЅпїЅ-пїЅпїЅ') or 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ')
+                    (v.buy and ('Купить предмет за '..v.cost..'$ и меньше,'..v.int..' кол-во') or 'Чекнуть')
                 ))
                 imgui.SameLine()
                 if imgui.Button('<delete##'..k) then
@@ -506,16 +541,9 @@ function imgui.OnDrawFrame()
             imgui.EndMenu()
         end
 
-        if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ',imgui.ImVec2(350-35,30)) then
+        if imgui.Button(u8'Обновить список предметов',imgui.ImVec2(350-35,30)) then
             imgui.OpenPopup('sure?')
         end
-        imgui.TextQuestion(u8[[
-пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 'https://arz-wiki.com/items/page/1+/' пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
-пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 30 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
-
-пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ arz-wiki пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
-(пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ(пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ))
-]])
 
         imgui.InputText('search',bot.search)
 
@@ -530,18 +558,18 @@ function imgui.OnDrawFrame()
                     -- imgui.Text(string.rep(' ',(imgui.CalcTextSize(u8(v)).x/2+20) ))
 
                     local int = imgui.ImInt((bot.buy.v and 1 or 0))
-                    imgui.RadioButton(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ',int,0)
+                    imgui.RadioButton(u8'Чекнуть ли есть товар в лавке',int,0)
                     imgui.SameLine()
                     imgui.Text(string.rep(' ',(imgui.CalcTextSize(u8(v)).x/4) ))
-                    imgui.RadioButton(u8'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ',int,1)
+                    imgui.RadioButton(u8'Купить товар',int,1)
                     bot.buy.v = (int.v == 1 and true or false)
 
                     if int.v == 1 then
-                        imgui.Text(u8'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ(<=)')
+                        imgui.Text(u8'Купить товар если цена ниже(<=)')
                         imgui.SameLine()
                         imgui.PushItemWidth(150)
-                        imgui.InputInt(u8'(пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ)##cost',bot.cost)
-                        imgui.Text(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ?')
+                        imgui.InputInt(u8'(цена за одну штуку)##cost',bot.cost)
+                        imgui.Text(u8'Сколько купить?')
                         imgui.SameLine()
                         imgui.InputInt(u8'##int',bot.int)
                         imgui.PopItemWidth(2)
@@ -566,19 +594,20 @@ function imgui.OnDrawFrame()
         end
         if imgui.BeginPopup('sure?') then
             imgui.Text(u8[[
-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ?]])
-            if imgui.Button(u8'DAA!') then
+Вы уверены что хотите перезаписать предметы?
+Через что хочешь?]])
+            if imgui.Button(u8'Через сайт arz-wiki') then
                 local res,er = pcall(requests.get,'https://arz-wiki.com/items/')
                 if not res then
                     sampShowDialog(1,'crBot',(
-[[пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ!
-пїЅпїЅпїЅпїЅпїЅпїЅ:
+[[Скрипту не удалось получить текст с сайта!
+ошибка:
     <%s>
 
-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ github пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ json пїЅпїЅпїЅпїЅ([arz]CrBaron_Items.json) пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ json пїЅ пїЅпїЅпїЅпїЅпїЅ config]]):format(er),'<','>',0)
+Зайдите на github репозиторий скрипта, там должен быть json файл([arz]CrBaron_Items.json) со всеми предметами
+закиньте этот json в папку config]]):format(er),'<','>',0)
                 else
-                    sampAddChatMessage('пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ! пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 0')
+                    sampAddChatMessage('Парсинг предметов начался! Для {CD1515}отмены{cccccc} зажмите цифру 0')
                     crItems = {}
                     local maxPage = 0
                     lua_thread.create(function()
@@ -597,8 +626,8 @@ function imgui.OnDrawFrame()
                         for page = 1,maxPage do
                             if isKeyDown(VK_0) then
                                 sampShowDialog(1,'crBot',([[
-    пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ!
-    пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ %s пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ %s/%s пїЅпїЅпїЅпїЅпїЅпїЅпїЅ]]):format(#crItems,page,maxPage),'<','>',0)
+    Парсинг был отменен!
+    Было записано %s предметов из %s/%s страниц]]):format(#crItems,page,maxPage),'<','>',0)
                                 break
                             end
                             local get = false
@@ -615,11 +644,31 @@ function imgui.OnDrawFrame()
                             printStringNow('write item #'..#crItems..',page '..page..'/'..maxPage,1000)
                         end
                         json.save(crItems,'[arz]CrBaron_Items.json')
-                        sampAddChatMessage('пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!')
+                        sampAddChatMessage('Парсинг {0CC726}успешно{cccccc} завершен!')
                     end)
                 end
             end
+        imgui.TextQuestion(u8[[
+Скрипт парсит страницы 'https://arz-wiki.com/items/page/1+/' и берет название товаров
+в одной странице 30 предметов
 
+время парсинга всех страниц предметов на arz-wiki зависит от вашего интернета
+(сайт возможно не будет работать в Украине(но у меня работал, тут зависит от вашего провайдера))
+]])
+            if imgui.Button(u8'Установить json из github репозиторий скрипта') then
+                downloadUrlToFile(
+                    'https://raw.githubusercontent.com/v3sp4n/crBot/main/%5Barz%5DCrBaron_Items.json',
+                    'moonloader/confog/[arz]CrBaron_Items.json',
+                    function(id,status,_,_)
+                        if status == 58 then
+                            sampAddChatMessage('[arz]CrBaron_Items.json был {0CC726}успешно{cccccc} скачан и установлен в папку config! Скрипт будет перезагружен..')
+                            thisScript():reload()
+                        end
+                    end
+                )
+            end
+            imgui.TextQuestion(u8[[
+Возможные неактуальные товары!]])
             imgui.EndPopup()
         end
 
@@ -644,8 +693,8 @@ function imgui.OnDrawFrame()
 
         if imgui.BeginMenu('coordmaster') then
             imgui.Text(u8[[
-пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
-пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ]])
+Если к премеру вы сделали на пару лавок ловлю
+то если лавка слетит и скрипт успешно её купит все другие лавки отключат ловлю]])
             if imgui.DragFloat('step',lavki.coordmaster.step,0.5,1,10000) then j.lavki.coordmaster.step = lavki.coordmaster.step.v;    json.save(j,'[arz]CrBaron.json');   end
             if imgui.DragInt('delay',lavki.coordmaster.delay,0.5,10,10000) then j.lavki.coordmaster.delay = lavki.coordmaster.delay.v;    json.save(j,'[arz]CrBaron.json');   end
             imgui.EndMenu()
@@ -659,16 +708,16 @@ function imgui.OnDrawFrame()
         end
 
         for k,v in pairs(lavki.lavki) do
-            local r,g,b,a = unpack(j.lavki.colors['пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ'])
+            local r,g,b,a = unpack(j.lavki.colors['свободная лавка'])
             imgui.SetCursorPos(imgui.ImVec2(v.imgui.x,v.imgui.y+40))
-            if v.text.text:find('^%S+ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ') then
-                r,g,b,a = unpack(j.lavki.colors['пїЅпїЅпїЅпїЅпїЅпїЅ'])
-            elseif v.text.text:find('^%S+ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ') then
-                r,g,b,a = unpack(j.lavki.colors['пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ'])                
-            elseif v.text.text:find('^%S+ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ') then
-                r,g,b,a = unpack(j.lavki.colors['пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ'])                
-            elseif v.text.text:find('^%S+ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ') then
-                r,g,b,a = unpack(j.lavki.colors['пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ'])
+            if v.text.text:find('^%S+ продаёт товар') then
+                r,g,b,a = unpack(j.lavki.colors['продаёт'])
+            elseif v.text.text:find('^%S+ покупает товар') then
+                r,g,b,a = unpack(j.lavki.colors['покупает'])                
+            elseif v.text.text:find('^%S+ продаёт и покупает товар') then
+                r,g,b,a = unpack(j.lavki.colors['продаёт и покупает'])                
+            elseif v.text.text:find('^%S+ редактирует список') then
+                r,g,b,a = unpack(j.lavki.colors['редактирует'])
             end
             imgui.PushStyleColor(1,imgui.ImVec4(r,g,b,a))
             imgui.Text('<>')
@@ -687,9 +736,9 @@ function imgui.OnDrawFrame()
                     end)
                 end
                 imgui.BeginTooltip()
-                imgui.Text(u8('пїЅпїЅпїЅпїЅпїЅ '..k..'\n'..v.text.text))
-                imgui.Text(u8(v.render and 'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ' or 'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ') ..u8'(пїЅпїЅпїЅ)')
-                imgui.Text(u8(v.buy and 'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' or 'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ') ..u8'(пїЅпїЅпїЅ)(пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)')
+                imgui.Text(u8('Лавка '..k..'\n'..v.text.text))
+                imgui.Text(u8(v.render and 'Рендер включен' or 'Рендер выключен') ..u8'(ЛКМ)')
+                imgui.Text(u8(v.buy and 'Ловля включена' or 'Ловля выключена') ..u8'(ПКМ)(ловля курдмастером)')
                 imgui.EndTooltip()
             end
 
@@ -704,26 +753,25 @@ function update(notf)
 end
 
 function sampev.onShowDialog(id, style, title, b1, b2, text)
-    if title == '{BFBBBA}' and text:find('^%{%x+%}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ%: %{%x+%}%$%d+') then
+    if title == '{BFBBBA}' and text:find('^%{%x+%}Стоимость аренды лавки%: %{%x+%}%$%d+') then
 
     end
 
-    if bot.bool.v and lavkaOpen() and title:find('пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ') then
+    if bot.bool.v and lavkaOpen() and title:find('Покупка предмета') then
     -- if true then
         local item,int,cost = '',0,0
         for l in text:gmatch('[^\n]+') do
             if l:find('^%{%x+%}%W+%: ') and item == '' then
                 item = (l:match('^%{%x+%}%W+%: (.+)')):gsub('%{%x+%}','') 
             end
-            if l:find('^пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ%: (%d+) пїЅпїЅ%.') and int == 0 then
-                int = tonumber(l:match('^пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ%: (%d+) пїЅпїЅ%.'))
+            if l:find('^В наличии%: (%d+) шт%.') and int == 0 then
+                int = tonumber(l:match('^В наличии%: (%d+) шт%.'))
             end
-            if l:find('пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ%: %$(%S+) пїЅпїЅ (%d+) пїЅпїЅ%.$') and cost == 0 then
-                cost = ((l:match('пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ%: %$(%S+) пїЅпїЅ (%d+) пїЅпїЅ%.$')):gsub('%.',''):gsub(',',''))
+            if l:find('Стоимость%: %$(%S+) за (%d+) шт%.$') and cost == 0 then
+                cost = ((l:match('Стоимость%: %$(%S+) за (%d+) шт%.$')):gsub('%.',''):gsub(',',''))
                 cost = tonumber(cost)
             end
         end
-        sampAddChatMessage('%s',item)
         for k,v in ipairs(j.bot.items) do
             if v.item == item then
                 if v.buy and v.cost <= cost then
@@ -733,14 +781,14 @@ function sampev.onShowDialog(id, style, title, b1, b2, text)
                         sampSendDialogResponse(id,1,_,tostring((v.int > int and int or v.int)))
                     end
                     v.int = v.int - 1
-                    sendTelegramMessage('пїЅпїЅпїЅпїЅпїЅпїЅпїЅ %s пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ %s$(пїЅпїЅ 1пїЅпїЅ)\nпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ %s пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ,пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ %s',item,cost,int,v.int)
+                    sendTelegramMessage('Предмет %s был куплен за %s$(за 1шт)\nВсего было куплено %s количество,осталось %s',item,cost,int,v.int)
                     if v.int == 0 then
-                        sendTelegramMessage('пїЅпїЅпїЅпїЅпїЅпїЅпїЅ %s пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!\n(пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)',item)
+                        sendTelegramMessage('Предмет %s был весь выкуплен!\n(предмет для скупки удален из скрипта)',item)
                         table.remove(j.bot.items,k)
                     end
                     json.save(j,'[arz]CrBaron.json')
                 else
-                    sendTelegramMessage('пїЅпїЅпїЅпїЅпїЅпїЅпїЅ %s пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ %s$(пїЅпїЅ 1пїЅпїЅ)\nпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ %s',cost,int)
+                    sendTelegramMessage('Предмет %s был найден в лавке за %s$(за 1шт)\nВсего количества %s',cost,int)
                 end
             end
         end
@@ -812,7 +860,10 @@ function renderFontDrawTextFromAlign(FONT,text,x,y,color,align)
 end
 
 function sendTelegramMessage(text,...)
-    text = (tostring(text)):format(...)
+    for l in (tostring(text)):format(...):gmatch('[^\n]+') do
+        sampAddChatMessage('{0090FF}'..l)
+    end
+    text = '[crBot]'..(tostring(text)):format(...)
     text = text:gsub('{......}', '')
     text = text:gsub(' ', '%+')
     text = text:gsub('\n', '%%0A')
