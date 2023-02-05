@@ -2,7 +2,7 @@
 
 ![Screenshot_1](https://user-images.githubusercontent.com/57196133/216812510-2892e407-8235-45ce-af0d-72e3b57bf6a1.png)
 
-[official blasthack theme](www.blasthack.com) 
+[official blasthack theme](www.blasthack.com)            
 idea-publisher KostLim [profile in blasthack](https://www.blast.hk/members/269820/)     
 developer Vespan [profile in blasthack](https://www.blast.hk/members/295413/)   
 
